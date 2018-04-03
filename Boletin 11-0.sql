@@ -1,9 +1,14 @@
 -- Boletin 11.0
 -- Sobre la base de datos LeoTurf
 
+use leoturf
+go
+
 -- 1.Crea una función inline llamada FnCarrerasCaballo que reciba un rango de fechas (inicio y fin) 
 --	y nos devuelva el número de carreras disputadas por cada caballo entre esas dos fechas. 
 --	Las columnas serán ID (del caballo), nombre, sexo, fecha de nacimiento y número de carreras disputadas.
+
+
 
 -- 2.Crea una función escalar llamada FnTotalApostadoCC que reciba como parámetros el ID de un caballo 
 --	y el ID de una carrera y nos devuelva el dinero que se ha apostado a ese caballo en esa carrera.
