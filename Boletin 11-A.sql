@@ -97,6 +97,7 @@ else
 		print 'La tabla ya existe.'
 	end
 
+go
 -- 5. Entre los años 96 y 97 hay productos que han aumentado sus ventas y otros que las han disminuido. 
 --	Queremos cambiar el precio unitario según la siguiente tabla:
 
@@ -106,27 +107,37 @@ else
 --	  Entre 10% y 50%				+5%
 --    Mayor del 50%      10% con un máximo de 2,25
 
-select * from Products as PRO
-inner join (
-	select OD.ProductID, sum(Quantity) as Ventas from [Order Details] as OD
-	inner join Orders as ORD on OD.OrderID = ORD.OrderID
-	where year(ORD.OrderDate) = 1997 
-	group by OD.ProductID
-) as Ventas1997 on PRO.ProductID = Ventas1997.ProductID
-inner join (
-	select OD.ProductID, sum(Quantity) as Ventas from [Order Details] as OD
-	inner join Orders as ORD on OD.OrderID = ORD.OrderID
-	where year(ORD.OrderDate) = 1996 
-	group by OD.ProductID
-) as Ventas1996 on PRO.ProductID = Ventas1996.ProductID
 
-/*
-UPDATE 
-SET orden = CASE id_empleado
-WHEN 12 THEN 1
-WHEN 254 THEN 4
-WHEN 87 THEN 8
-WHEN 23 THEN 14
-    END
-WHERE id_empleado IN (12, 254, 87, 23)
-*/
+create view Ventas96_97 as 
+	select PRO.ProductID, Ventas1996.Ventas as Ventas96, 
+	Ventas1997.Ventas as Ventas97, isnull((Ventas1997.Ventas*100/Ventas1996.Ventas)-100, 100) as DiferenciaPorcentual
+	from Products as PRO
+	left join (
+		select OD.ProductID, sum(Quantity) as Ventas from [Order Details] as OD
+		inner join Orders as ORD on OD.OrderID = ORD.OrderID
+		where year(ORD.OrderDate) = 1997 
+		group by OD.ProductID
+	) as Ventas1997 on PRO.ProductID = Ventas1997.ProductID
+	left join (
+		select OD.ProductID, sum(Quantity) as Ventas from [Order Details] as OD
+		inner join Orders as ORD on OD.OrderID = ORD.OrderID
+		where year(ORD.OrderDate) = 1996 
+		group by OD.ProductID
+	) as Ventas1996 on PRO.ProductID = Ventas1996.ProductID
+go
+
+begin transaction
+-- no funciona, salta restriccion CK_Products_UnitsPrice (No entiendo el porqué, ninguna operación da un resultado negativo)
+UPDATE Products
+SET UnitPrice = CASE 
+	WHEN Ventas96_97.DiferenciaPorcentual < 0 THEN UnitPrice*0.9
+	WHEN Ventas96_97.DiferenciaPorcentual between 0 and 10 THEN UnitPrice
+	WHEN Ventas96_97.DiferenciaPorcentual between 10 and 50 THEN UnitPrice*1.05
+	ELSE CASE
+		WHEN UnitPrice-UnitPrice*1.10 > 2.25 THEN UnitPrice+2.25
+		ELSE UnitPrice-UnitPrice*1.10
+	END
+END
+FROM Ventas96_97
+
+rollback
